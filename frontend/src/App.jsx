@@ -1,26 +1,26 @@
 import { useState } from 'react'
+import { BrowserRouter, Routes, Route, Link} from 'react-router-dom'
 
 import Home from './pages/Home';
-import Onboarding from './pages/Onboarding';
+//import Onboarding from './pages/Onboarding';
+import Dashboard from './pages/Dashboard';
+import Feedback from './pages/Feedback';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 
-function App() {
+export default function App() {
   return (
-    <div className="min-h-screen bg-slate-50">
-      <Navbar />
-      <Home />
-      <Footer/>
-    </div>
-    //<Onboarding />
-    /*<div className="min-h-screen bg-gray-50">
-      <h1 className="text-4xl font-bold text-center pt-20">
-        UW Class Cost Calculator
-      </h1>
-
-    </div>*/
+    <BrowserRouter>
+        <div className="min-h-screen bg-slate-50">
+            <Navbar />
+            <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/feedback" element={<Feedback />} />
+            </Routes>
+            <Footer />
+        </div>
+    </BrowserRouter>
   );
 }
-
-export default App;
  

@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 export default function Navbar() {
   return (
     <nav className="sticky top-0 bg-white/70 shadow-sm border-b backdrop-blur-md border-amber-100">
@@ -11,26 +13,30 @@ export default function Navbar() {
 
           {/* Right - Nav Links + Login (flush right) */}
           <div className="flex items-center gap-8 pr-4">
-            <a href="#" className="text-gray-600 hover:text-gray-900 transition-colors font-medium">
-              Home
-            </a>
-            <a href="#" className="text-gray-600 hover:text-gray-900 transition-colors font-medium">
-              Dashboard
-            </a>
-            <a href="#" className="text-gray-600 hover:text-gray-900 transition-colors font-medium">
-              About
-            </a>
-            <a href="#" className="text-gray-600 hover:text-gray-900 transition-colors font-medium">
-              Feedback
-            </a>
-            <button
-              className="px-4 py-2 bg-amber-400 text-white rounded-lg hover:bg-amber-500 transition-colors font-medium"
+            <Link
+              to="/"
+              className="text-gray-600 hover:text-gray-900 transition-colors font-medium"
             >
+              Home
+            </Link>
+            <Link
+              to="/dashboard"
+              className="text-gray-600 hover:text-gray-900 transition-colors font-medium"
+            >
+              Dashboard
+            </Link>
+            <Link
+              to="/feedback"
+              className="text-gray-600 hover:text-gray-900 transition-colors font-medium"
+            >
+              Feedback
+            </Link>
+            <button className="px-4 py-2 bg-amber-400 text-white rounded-lg hover:bg-amber-500 transition-colors font-medium">
               Login
             </button>
           </div>
         </div>
       </div>
     </nav>
-  )
+  );
 }
