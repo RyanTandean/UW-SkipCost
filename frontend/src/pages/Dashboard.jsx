@@ -6,7 +6,7 @@ import AiInsightsCard from "../components/AiInsightsCard";
 
 export default function Dashboard() {
     return (
-        <main className="relative w-full min-h-screen bg-gradient-to-br from-white via-amber-50 to-amber-100 p-6">
+        <main className="relative w-full min-h-screen bg-gradient-to-br from-cyan-400 via-cyan-500 to-cyan-600 p-6">
               <section className="w-full max-w-2xl">
                   <WelcomeMessage username="John Doe" />
               </section>
