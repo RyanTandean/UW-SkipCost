@@ -1,4 +1,6 @@
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import FeatureCard from "../components/FeatureCard";
 
 // Animation variants
@@ -30,6 +32,8 @@ const staggerItem = {
 };
 
 export default function Home({ onLoginClick }) {
+  const { user } = useAuth();
+
   return (
     <main className="px-0 py-0 w-full flex flex-col items-center justify-center p-4">
       {/*Pebble Animation Background*/}
@@ -63,12 +67,21 @@ export default function Home({ onLoginClick }) {
             transition={{ duration: 0.6, delay: 0.3, ease: "easeOut" }}
             className="flex justify-center"
           >
-            <button
-              onClick={onLoginClick}
-              className="inline-block px-8 py-4 bg-cyan-500 hover:bg-cyan-400 text-white rounded-lg font-semibold shadow-lg shadow-cyan-500/30 transition-all hover:shadow-cyan-400/40"
-            >
-              Get started
-            </button>
+            {user ? (
+              <Link
+                to="/dashboard"
+                className="inline-block px-8 py-4 bg-cyan-500 hover:bg-cyan-400 text-white rounded-lg font-semibold shadow-lg shadow-cyan-500/30 transition-all hover:shadow-cyan-400/40"
+              >
+                Go to Dashboard
+              </Link>
+            ) : (
+              <button
+                onClick={onLoginClick}
+                className="inline-block px-8 py-4 bg-cyan-500 hover:bg-cyan-400 text-white rounded-lg font-semibold shadow-lg shadow-cyan-500/30 transition-all hover:shadow-cyan-400/40"
+              >
+                Get started
+              </button>
+            )}
           </motion.div>
         </motion.div>
 
@@ -152,30 +165,32 @@ export default function Home({ onLoginClick }) {
       </section>
 
       {/* Bottom of the lake - where the stone settles */}
-      <section className="w-full bg-gradient-to-b from-slate-800/90 to-slate-900 py-10">
-        <motion.div 
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-50px" }}
-          variants={staggerContainer}
-          className="max-w-4xl mx-auto text-center px-6"
-        >    
-          <motion.div variants={staggerItem} className="inline-block mb-6">
-            {/* Sinking stone placeholder */}
-            <div className="w-10 h-10 bg-gray-600 rounded-full shadow-inner mx-auto opacity-60" />
-          </motion.div>
-          <motion.h3 
-            variants={staggerItem}
-            className="text-2xl font-bold text-white mb-4"
-          >
-            Don't let your money sink away
-          </motion.h3>
-          <motion.p 
-            variants={staggerItem}
-            className="text-slate-300 mb-8"
-          >
-            Start tracking your attendance and see the real cost of skipping.
-          </motion.p>
+      {/* Only show CTA section if not logged in */}
+      {!user && (
+        <section className="w-full bg-gradient-to-b from-slate-800/90 to-slate-900 py-10">
+          <motion.div 
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-50px" }}
+            variants={staggerContainer}
+            className="max-w-4xl mx-auto text-center px-6"
+          >    
+            <motion.div variants={staggerItem} className="inline-block mb-6">
+              {/* Sinking stone placeholder */}
+              <div className="w-10 h-10 bg-gray-600 rounded-full shadow-inner mx-auto opacity-60" />
+            </motion.div>
+            <motion.h3 
+              variants={staggerItem}
+              className="text-2xl font-bold text-white mb-4"
+            >
+              Don't let your money sink away
+            </motion.h3>
+            <motion.p 
+              variants={staggerItem}
+              className="text-slate-300 mb-8"
+            >
+              Start tracking your attendance and see the real cost of skipping.
+            </motion.p>
             <motion.div variants={staggerItem}>
               <button
                 onClick={onLoginClick}
@@ -185,7 +200,8 @@ export default function Home({ onLoginClick }) {
               </button>
             </motion.div>
           </motion.div>
-      </section>
+        </section>
+      )}
     </main>
   );
 }

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 export default function AuthModal({ isOpen, onClose }) {
+  const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
     firstName: '',
@@ -12,21 +14,16 @@ export default function AuthModal({ isOpen, onClose }) {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
+  const [signupSuccess, setSignupSuccess] = useState(false);
 
   const { signIn, signUp, signInWithGoogle } = useAuth();
 
+  // ============ EFFECTS ============
+
   // Lock body scroll when modal is open
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
+    document.body.style.overflow = isOpen ? 'hidden' : 'unset';
+    return () => { document.body.style.overflow = 'unset'; };
   }, [isOpen]);
 
   // Close on escape key
@@ -35,10 +32,7 @@ export default function AuthModal({ isOpen, onClose }) {
       if (e.key === 'Escape') onClose();
     };
     
-    if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
-    }
-    
+    if (isOpen) document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
   }, [isOpen, onClose]);
 
@@ -47,7 +41,7 @@ export default function AuthModal({ isOpen, onClose }) {
     const hasFormData = formData.email || formData.password || formData.firstName || formData.confirmPassword;
     
     const handleBeforeUnload = (e) => {
-      if (isOpen && hasFormData) {
+      if (isOpen && hasFormData && !signupSuccess) {
         e.preventDefault();
         e.returnValue = '';
       }
@@ -55,77 +49,136 @@ export default function AuthModal({ isOpen, onClose }) {
     
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [isOpen, formData]);
+  }, [isOpen, formData, signupSuccess]);
+
+  // ============ HANDLERS ============
+
+  const resetForm = () => {
+    setFormData({ firstName: '', email: '', password: '', confirmPassword: '' });
+    setError('');
+    setSignupSuccess(false);
+  };
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setError('');
+  };
+
+  const toggleMode = () => {
+    setIsLogin(!isLogin);
+    resetForm();
+  };
+
+  const handleLogin = async () => {
+    const { error } = await signIn(formData.email, formData.password);
+    if (error) {
+      setError(error.message);
+    } else {
+      onClose();
+      navigate('/dashboard');
+    }
+  };
+
+  const handleSignup = async () => {
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    const { data, error } = await signUp(
+      formData.email,
+      formData.password,
+      formData.firstName
+    );
+
+    if (error) {
+      setError(error.message);
+    } else if (data?.user?.identities?.length === 0) {
+      setError('An account with this email already exists');
+    } else {
+      // Show success message - user needs to confirm email
+      setSignupSuccess(true);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
-    setMessage('');
 
     if (isLogin) {
-      // Login
-      const { error } = await signIn(formData.email, formData.password);
-      if (error) {
-        setError(error.message);
-      } else {
-        onClose();
-      }
+      await handleLogin();
     } else {
-      // Sign up - validate passwords match
-      if (formData.password !== formData.confirmPassword) {
-        setError('Passwords do not match');
-        setIsLoading(false);
-        return;
-      }
-
-      const { data, error } = await signUp(
-        formData.email, 
-        formData.password, 
-        formData.firstName
-      );
-      
-      if (error) {
-        setError(error.message);
-      } else if (data?.user?.identities?.length === 0) {
-        setError('An account with this email already exists');
-      } else {
-        setMessage('Check your email to confirm your account!');
-        // Optionally close after a delay
-        setTimeout(() => {
-          onClose();
-        }, 3000);
-      }
+      await handleSignup();
     }
-    
+
     setIsLoading(false);
   };
 
   const handleGoogleSignIn = async () => {
     setError('');
     const { error } = await signInWithGoogle();
-    if (error) {
-      setError(error.message);
-    }
-    // Google OAuth will redirect, so no need to close modal
+    if (error) setError(error.message);
   };
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-    // Clear errors when user types
-    setError('');
-    setMessage('');
-  };
+  // ============ RENDER ============
 
-  const toggleMode = () => {
-    setIsLogin(!isLogin);
-    setFormData({ firstName: '', email: '', password: '', confirmPassword: '' });
-    setError('');
-    setMessage('');
-  };
+  // Success state after signup
+  if (signupSuccess) {
+    return (
+      <AnimatePresence>
+        {isOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm"
+              onClick={onClose}
+            />
+            
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative z-10 bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-8 max-w-md w-full mx-4 border border-white/50 text-center"
+            >
+              <button
+                onClick={onClose}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+
+              <div className="py-8">
+                <div className="text-5xl mb-4">📧</div>
+                <h3 className="text-2xl font-bold text-gray-800 mb-2">Check your email!</h3>
+                <p className="text-gray-600 mb-6">
+                  We sent a confirmation link to <span className="font-semibold">{formData.email}</span>
+                </p>
+                <p className="text-gray-500 text-sm">
+                  Click the link in your email to activate your account, then come back to sign in.
+                </p>
+              </div>
+
+              <button
+                onClick={() => {
+                  setSignupSuccess(false);
+                  setIsLogin(true);
+                  resetForm();
+                }}
+                className="text-cyan-600 hover:text-cyan-700 font-semibold text-sm"
+              >
+                ← Back to login
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    );
+  }
 
   return (
     <AnimatePresence>
@@ -171,7 +224,6 @@ export default function AuthModal({ isOpen, onClose }) {
 
             {/* Toggle tabs with animated slider */}
             <div className="relative flex bg-gray-100 rounded-xl p-1 mb-6">
-              {/* Animated background slider */}
               <motion.div
                 className="absolute top-1 bottom-1 bg-white rounded-lg shadow-sm"
                 initial={false}
@@ -182,7 +234,7 @@ export default function AuthModal({ isOpen, onClose }) {
                 transition={{ type: 'spring', stiffness: 300, damping: 30 }}
               />
               <button
-                onClick={() => { setIsLogin(true); setError(''); setMessage(''); }}
+                onClick={() => { setIsLogin(true); setError(''); }}
                 className={`relative z-10 flex-1 py-2 px-4 rounded-lg text-sm font-semibold transition-colors ${
                   isLogin ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'
                 }`}
@@ -190,7 +242,7 @@ export default function AuthModal({ isOpen, onClose }) {
                 Log in
               </button>
               <button
-                onClick={() => { setIsLogin(false); setError(''); setMessage(''); }}
+                onClick={() => { setIsLogin(false); setError(''); }}
                 className={`relative z-10 flex-1 py-2 px-4 rounded-lg text-sm font-semibold transition-colors ${
                   !isLogin ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'
                 }`}
@@ -203,13 +255,6 @@ export default function AuthModal({ isOpen, onClose }) {
             {error && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
                 {error}
-              </div>
-            )}
-
-            {/* Success message */}
-            {message && (
-              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl text-green-600 text-sm">
-                {message}
               </div>
             )}
 

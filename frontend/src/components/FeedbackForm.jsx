@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { supabase } from '../lib/supabase';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 20 },
@@ -16,7 +17,19 @@ export default function FeedbackForm() {
     feedback: ''
   });
   const [submitted, setSubmitted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.email) {
+        setFormData(prev => ({ ...prev, email: user.email }));
+      }
+    };
+    getUser();
+  }, []);
   // Warn before leaving if form has data
   useEffect(() => {
     const hasFormData = formData.email || formData.feedback;
@@ -32,15 +45,30 @@ export default function FeedbackForm() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [formData, submitted]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Feedback submitted:', formData);
-    setSubmitted(true);
-    
-    setTimeout(() => {
-      setFormData({ email: '', feedback: '' });
-      setSubmitted(false);
-    }, 3000);
+    setIsLoading(true);
+    setError('');
+
+    const { error: submitError } = await supabase
+      .from('feedback')
+      .insert({
+        email: formData.email || null,
+        message: formData.feedback
+      });
+
+    setIsLoading(false);
+
+    if (submitError) {
+      console.error('Error submitting feedback:', submitError);
+      setError('Something went wrong. Please try again.');
+    } else {
+      setSubmitted(true);
+      setTimeout(() => {
+        setFormData({ email: '', feedback: '' });
+        setSubmitted(false);
+      }, 3000);
+    }
   };
 
   const handleChange = (e) => {
@@ -48,6 +76,7 @@ export default function FeedbackForm() {
       ...formData,
       [e.target.name]: e.target.value
     });
+    setError('');
   };
 
   return (
@@ -61,10 +90,10 @@ export default function FeedbackForm() {
           className="text-center mb-8 lg:mb-12"
         >
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
-           How are we doing?
+            We'd love your feedback
           </h1>
           <p className="text-gray-600 text-sm sm:text-base lg:text-lg">
-            Help us make SkipCost better for everyone
+            Help us make ClassCost better for everyone
           </p>
         </motion.div>
 
@@ -101,6 +130,13 @@ export default function FeedbackForm() {
               onSubmit={handleSubmit} 
               className="bg-white/70 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-lg p-6 sm:p-8 lg:p-10 border border-white/50"
             >
+              {/* Error message */}
+              {error && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
+                  {error}
+                </div>
+              )}
+
               {/* Email */}
               <motion.div 
                 initial={{ opacity: 0, y: 15 }}
@@ -152,7 +188,7 @@ export default function FeedbackForm() {
               >
                 <button
                   type="submit"
-                  className="w-full bg-cyan-500 hover:bg-cyan-400 text-white font-semibold py-4 sm:py-5 px-8 rounded-xl sm:rounded-2xl shadow-lg shadow-cyan-500/30 transition-all hover:shadow-cyan-400/20 hover:shadow-xl active:scale-[0.98] text-sm sm:text-base lg:text-lg"
+                  className="w-full bg-cyan-500 hover:bg-cyan-400 text-white font-semibold py-4 sm:py-5 px-8 rounded-xl sm:rounded-2xl shadow-lg shadow-cyan-500/30 transition-all hover:shadow-cyan-400/40 hover:shadow-xl active:scale-[0.98] text-sm sm:text-base lg:text-lg"
                 >
                   Submit Feedback
                 </button>

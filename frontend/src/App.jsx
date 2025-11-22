@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext';
 
 import Home from './pages/Home';
-//import Onboarding from './pages/Onboarding';
+import Onboarding from './pages/Onboarding';
 import Dashboard from './pages/Dashboard';
 import Feedback from './pages/Feedback';
 import Navbar from './components/Navbar';
@@ -24,6 +24,7 @@ export default function App() {
                   <Route path="/" element={<Home onLoginClick={() => setIsAuthOpen(true)} />} />
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/feedback" element={<Feedback />} />
+                  <Route path="/onboarding" element={<Onboarding />} />
               </Routes>
               <Footer />
           </div>

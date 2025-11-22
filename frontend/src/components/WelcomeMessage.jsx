@@ -1,4 +1,4 @@
-export default function WelcomeMessage({ username = "Guest" }) {
+export default function WelcomeMessage({ greeting, username }) {
   const today = new Date();
   
   const formattedDate = today.toLocaleDateString('en-US', {
@@ -11,7 +11,7 @@ export default function WelcomeMessage({ username = "Guest" }) {
   return (
     <>
       <h1 className="text-3xl mb-2">
-        Welcome, {username}
+        {greeting}{username ? `, ${username}` : ''}
       </h1>
       <p className="text-lg opacity-90">
         {formattedDate}

@@ -1,24 +1,13 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
+import ProfileDropdown from "./ProfileDropdown";
+import MobileMenu from "./MobileMenu";
 
 export default function Navbar({ onLoginClick }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { user, signOut } = useAuth();
-
-  const handleLoginClick = () => {
-    setIsMobileMenuOpen(false);
-    onLoginClick();
-  };
-
-  const handleSignOut = async () => {
-    setIsMobileMenuOpen(false);
-    await signOut();
-  };
-
-  // Get first name from user metadata
-  const firstName = user?.user_metadata?.first_name || 'User';
+  const { user } = useAuth();
 
   return (
     <nav className="sticky top-0 z-50 bg-white/50 shadow-sm border-b backdrop-blur-md border-blue-100">
@@ -53,20 +42,8 @@ export default function Navbar({ onLoginClick }) {
             </Link>
             
             {user ? (
-              // Logged in - show user info and sign out
-              <div className="flex items-center gap-4">
-                <span className="text-gray-700 font-medium">
-                  Hi, {firstName}
-                </span>
-                <button
-                  onClick={handleSignOut}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors font-medium"
-                >
-                  Sign out
-                </button>
-              </div>
+              <ProfileDropdown />
             ) : (
-              // Not logged in - show login button
               <button
                 onClick={onLoginClick}
                 className="px-4 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-400 shadow-lg shadow-cyan-500/30 transition-all hover:shadow-cyan-400/40 font-medium"
@@ -76,7 +53,7 @@ export default function Navbar({ onLoginClick }) {
             )}
           </div>
 
-          {/* Mobile hamburger button - shown on mobile */}
+          {/* Mobile hamburger button */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="md:hidden p-2 text-gray-600 hover:text-gray-900 transition-colors"
@@ -107,64 +84,13 @@ export default function Navbar({ onLoginClick }) {
           </button>
         </div>
 
-        {/* Mobile menu dropdown */}
+        {/* Mobile menu */}
         <AnimatePresence>
-          {isMobileMenuOpen && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.2, ease: "easeInOut" }}
-              className="md:hidden overflow-hidden"
-            >
-              <div className="flex flex-col gap-4 pt-4 pb-2">
-                <Link
-                  to="/"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="text-gray-600 hover:text-gray-900 transition-colors font-medium py-2"
-                >
-                  Home
-                </Link>
-                <Link
-                  to="/dashboard"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="text-gray-600 hover:text-gray-900 transition-colors font-medium py-2"
-                >
-                  Dashboard
-                </Link>
-                <Link
-                  to="/feedback"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="text-gray-600 hover:text-gray-900 transition-colors font-medium py-2"
-                >
-                  Feedback
-                </Link>
-                
-                {user ? (
-                  // Logged in - show user info and sign out
-                  <>
-                    <span className="text-gray-700 font-medium py-2">
-                      Hi, {firstName}
-                    </span>
-                    <button
-                      onClick={handleSignOut}
-                      className="px-4 py-3 text-gray-600 hover:text-gray-900 transition-colors font-medium text-left"
-                    >
-                      Sign out
-                    </button>
-                  </>
-                ) : (
-                  // Not logged in - show login button
-                  <button
-                    onClick={handleLoginClick}
-                    className="px-4 py-3 bg-cyan-500 text-white rounded-lg hover:bg-cyan-400 shadow-lg shadow-cyan-500/30 transition-all hover:shadow-cyan-400/40 font-medium text-center"
-                  >
-                    Log in
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          )}
+          <MobileMenu
+            isOpen={isMobileMenuOpen}
+            onClose={() => setIsMobileMenuOpen(false)}
+            onLoginClick={onLoginClick}
+          />
         </AnimatePresence>
       </div>
     </nav>
