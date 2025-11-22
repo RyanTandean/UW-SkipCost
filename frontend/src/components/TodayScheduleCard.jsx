@@ -1,41 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 export default function TodayScheduleCard({ lectures = [] }) {
-  // Default data if none provided
-  const defaultLectures = [
-    { 
-      id: 1,
-      title: 'Linear Algebra',
-      time: '8:00 AM',
-      cost: 24.50,
-      attended: null
-    },
-    { 
-      id: 2,
-      title: 'Data Structures',
-      time: '10:00 AM',
-      cost: 32.75,
-      attended: null
-    },
-    { 
-      id: 3,
-      title: 'Computer Networks',
-      time: '1:00 PM',
-      cost: 28.00,
-      attended: null
-    },
-    { 
-      id: 4,
-      title: 'Software Engineering',
-      time: '3:30 PM',
-      cost: 31.25,
-      attended: null
-    }
-  ];
+  const [lectureData, setLectureData] = useState([]);
 
-  const [lectureData, setLectureData] = useState(
-    lectures.length > 0 ? lectures : defaultLectures
-  );
+  // Update lectureData when lectures prop changes
+  useEffect(() => {
+    if (lectures.length > 0) {
+      setLectureData(lectures);
+    }
+  }, [lectures]);
 
   const handleAttendance = (id, attended) => {
     setLectureData(prev =>
@@ -50,6 +23,22 @@ export default function TodayScheduleCard({ lectures = [] }) {
     month: 'long', 
     day: 'numeric' 
   });
+
+  // Show empty state if no lectures
+  if (lectureData.length === 0) {
+    return (
+      <div className="bg-white/60 backdrop-blur-sm rounded-3xl shadow-md p-6">
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold text-gray-800">Today's Classes</h3>
+          <p className="text-sm text-gray-600">{today}</p>
+        </div>
+        <div className="text-center py-8 text-gray-500">
+          <p className="text-4xl mb-2">🎉</p>
+          <p>No classes today!</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white/60 backdrop-blur-sm rounded-3xl shadow-md p-6">
@@ -75,11 +64,11 @@ export default function TodayScheduleCard({ lectures = [] }) {
                 <p className="text-sm text-gray-600">{lecture.time}</p>
               </div>
               <div className="text-left">
-                <span className="text-lg font-bold text-red-500">${lecture.cost.toFixed(2)}</span>
+                <span className="text-lg font-bold text-red-500">${lecture.fairshareCost?.toFixed(2)}</span>
                 <p className="text-xs text-gray-500">Fairshare cost</p>
               </div>
               <div className="text-left ml-3">
-                <span className="text-lg font-bold text-red-500">${lecture.cost.toFixed(2)}</span>
+                <span className="text-lg font-bold text-red-500">${lecture.individualCost?.toFixed(2)}</span>
                 <p className="text-xs text-gray-500">Individual cost</p>
               </div>
             </div>

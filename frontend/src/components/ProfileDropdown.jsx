@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
+import { Link } from "react-router-dom";
 
 export default function ProfileDropdown() {
   const [isOpen, setIsOpen] = useState(false);
@@ -63,7 +64,10 @@ export default function ProfileDropdown() {
               <p className="text-sm font-semibold text-gray-900">{firstName}</p>
               <p className="text-xs text-gray-500 truncate">{user?.email}</p>
             </div>
-
+            <div className="px-4 py-3 border-b border-gray-100">
+              <Link to="/settings" className="text-sm font-medium text-cyan-600 hover:text-cyan-700">Settings</Link>  
+            </div>
+            
             {/* Menu items */}
             <div className="py-1">
               <button

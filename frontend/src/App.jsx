@@ -10,6 +10,7 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import AuthModal from './components/AuthModal';
 import ScrollToTop from './components/ScrollToTop'; 
+import Settings from './pages/Settings';
 
 export default function App() {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
@@ -25,6 +26,7 @@ export default function App() {
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/feedback" element={<Feedback />} />
                   <Route path="/onboarding" element={<Onboarding />} />
+                  <Route path="/settings" element={<Settings />} />
               </Routes>
               <Footer />
           </div>

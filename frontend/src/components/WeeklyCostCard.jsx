@@ -11,6 +11,7 @@ export default function WeeklyCostCard({ weekData = [] }) {
     { day: 'Sat', date: '27', cost: 0 },
     { day: 'Sun', date: '28', cost: 0 }
   ];
+  
 
   const data = weekData.length > 0 ? weekData : defaultWeekData;
   const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
