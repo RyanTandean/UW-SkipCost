@@ -75,7 +75,6 @@ export default function AuthModal({ isOpen, onClose }) {
       setError(error.message);
     } else {
       onClose();
-      navigate('/dashboard');
     }
   };
 

@@ -67,7 +67,7 @@ export default function Onboarding() {
         // Look for time pattern in nearby lines
         for (let j = i; j < Math.min(i + 3, lines.length); j++) {
           const timeLine = lines[j];
-          // Match patterns like "TTh 11:30AM - 12:50PM" or "MWF 10:30AM - 11:20AM"
+          // Match patterns like "TTh 11:30AM - 12:50PM"
           const timeMatch = timeLine.match(/([MTWThF]+)\s+(\d{1,2}:\d{2}[AP]M)\s*-\s*(\d{1,2}:\d{2}[AP]M)/);
           if (timeMatch) {
             const daysStr = timeMatch[1];

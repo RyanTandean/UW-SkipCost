@@ -1,4 +1,4 @@
-import { useState, useEffect, use } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { supabase } from "../lib/supabase";
@@ -7,6 +7,8 @@ import WeeklyCostCard from "../components/WeeklyCostCard";
 import TodayScheduleCard from "../components/TodayScheduleCard";
 import TermOverviewCard from "../components/TermOverviewCard";
 import AiInsightsCard from "../components/AiInsightsCard";
+import { useAuth } from "../context/AuthContext";
+import SignInRequired from "../components/SignInRequired";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 20 },
@@ -36,11 +38,10 @@ const staggerItem = {
 };
 
 export default function Dashboard() {
+  const { user, loading } = useAuth();
   const [hasCourses, setHasCourses] = useState(true); // default true to avoid flash
   const [userName, setUserName] = useState("");
   const [greeting, setGreeting] = useState("");
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [todayLectures, setTodayLectures] = useState([]);
   const [todayCost, setTodayCost] = useState({ fairshare: 0, individual: 0 });
   const [weekData, setWeekData] = useState([]);
@@ -48,19 +49,16 @@ export default function Dashboard() {
     moneyLost: 0,
     attendanceRate: 100,
     totalClasses: 0,
-    classesAttended: 0
+    classesAttended: 0,
   });
 
   useEffect(() => {
     const fetchDashboardData = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
       if (!user) return;
 
       // Get today's day name (e.g., "Monday")
-      const today = "Tuesday";
-      //const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+      //const today = "Tuesday";
+      const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
 
       // Fetch user's courses for today
       const { data: courses } = await supabase
@@ -178,13 +176,13 @@ export default function Dashboard() {
           moneyLost: 0,
           attendanceRate: 100,
           totalClasses: totalClassesPerTerm,
-          classesAttended: totalClassesPerTerm
+          classesAttended: totalClassesPerTerm,
         });
       }
     };
 
     fetchDashboardData();
-  }, []);
+  }, [user]);
 
   const formatTime = (timeStr) => {
     if (!timeStr) return "";
@@ -195,16 +193,6 @@ export default function Dashboard() {
     return `${hour12}:${minutes} ${ampm}`;
   };
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      setUser(user);
-      setLoading(false);
-    };
-    checkAuth();
-  }, []);
   useEffect(() => {
     // Set greeting based on time of day
     const hour = new Date().getHours();
@@ -218,9 +206,6 @@ export default function Dashboard() {
 
     // Fetch user's name
     const fetchUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
       if (user) {
         // First try to get first_name from auth metadata
         const firstName = user.user_metadata?.first_name;
@@ -241,13 +226,10 @@ export default function Dashboard() {
       }
     };
     fetchUser();
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     const checkCourses = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
       if (user) {
         const { data } = await supabase
           .from("courses")
@@ -259,7 +241,7 @@ export default function Dashboard() {
       }
     };
     checkCourses();
-  }, []);
+  }, [user]);
 
   // EARLY RETURN 1: Loading state
   if (loading) {
@@ -272,19 +254,7 @@ export default function Dashboard() {
 
   // EARLY RETURN 2: Not logged in
   if (!user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-cyan-100 to-sky-200 flex items-center justify-center px-4">
-        <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg p-8 text-center max-w-md">
-          <div className="text-5xl mb-4">🔒</div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">
-            Sign in required
-          </h2>
-          <p className="text-gray-600">
-            Log in to see your dashboard and track your class costs.
-          </p>
-        </div>
-      </div>
-    );
+    return <SignInRequired />;
   }
   return (
     <>
@@ -380,7 +350,7 @@ export default function Dashboard() {
             variants={staggerItem}
             className="flex flex-col gap-4 sm:gap-6"
           >
-            <TermOverviewCard 
+            <TermOverviewCard
               moneyLost={termStats.moneyLost}
               attendanceRate={termStats.attendanceRate}
               totalClasses={termStats.totalClasses}
