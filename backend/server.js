@@ -58,7 +58,11 @@ pool.query("SELECT NOW()", (err, res) => {
 });
 // --- Middleware ---
 app.use(cors()); // Enable CORS for all routes
+// Cross-Origin Resource Sharing (CORS) allows frontend (running on a different origin) to access backend APIs
+
+
 app.use(express.json()); // Parse JSON bodies
+// Converts JSON bodies of text into JavaScript objects and attaches them to req.body
 
 // --- Health Check Endpoint ---
 // Simple GET endpoint to verify server is running
@@ -78,7 +82,7 @@ app.post("/api/users", async (req, res) => {
   /*
     Example request body:
     {
-     "name": "Ryan Tandean",
+     "name": "Ryan",
      "email": "rtandean@uwaterloo.ca",
      "program": "Data Science",
      "student_type": "domestic",
@@ -92,7 +96,7 @@ app.post("/api/users", async (req, res) => {
       "INSERT INTO users (name, email, program, student_type, term_number) VALUES ($1, $2, $3, $4, $5) RETURNING *",
       [name, email, program, student_type, term_number]
     );
-    // send JSON back to whoever made the request
+    // send JSON back to whoever made the request so they can use it immediately
     res.json({
       success: true,
       user: result.rows[0],
@@ -105,38 +109,70 @@ app.post("/api/users", async (req, res) => {
     });
   }
 });
-// --- Create Course Endpoint ---
-// POST /api/courses: Adds a new course for a user
+
+
+
+// --- Create Enrollment Endpoint ---
+// POST /api/enrollments: Adds a new enrollment (course) for a user
 // CONSIDER BULK INSERT FOR MULTIPLE COURSES AT ONCE
-app.post("/api/courses", async (req, res) => {
+app.post("/api/enrollments", async (req, res) => {
   const {
     user_id,
-    course_name,
     course_code,
+    course_name,
+    term,
+    section,
     days_of_week,
     start_time,
     end_time,
   } = req.body;
 
   try {
-    // Insert course into database and return the new course
-    const result = await pool.query(
-      "INSERT INTO courses (user_id, course_name, course_code, days_of_week, start_time, end_time) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
-      [user_id, course_name, course_code, days_of_week, start_time, end_time]
+    // Check if course already exists in COURSES
+    const existingCourse = await pool.query(
+      `SELECT id FROM courses 
+       WHERE course_code = $1 AND term = $2 AND section = $3`,
+      [course_code, term, section]
+    );
+
+    let courseId;
+
+    if (existingCourse.rows.length > 0) {
+      // Course already exists, reuse it
+      courseId = existingCourse.rows[0].id;
+    } else {
+      // Create new course
+      const newCourse = await pool.query(
+        `INSERT INTO courses 
+         (course_code, course_name, term, section, days_of_week, start_time, end_time)
+         VALUES ($1, $2, $3, $4, $5, $6, $7) 
+         RETURNING id`,
+        [course_code, course_name, term, section, days_of_week, start_time, end_time]
+      );
+      courseId = newCourse.rows[0].id;
+    }
+
+    const enrollment = await pool.query(
+      `INSERT INTO enrollments (user_id, course_id, tuition_paid)
+       VALUES ($1, $2, $3)
+       RETURNING *`,
+      [user_id, courseId, null]
     );
 
     res.json({
       success: true,
-      course: result.rows[0],
+      courseId,
+      enrollment: enrollment.rows[0]
     });
   } catch (err) {
     console.error("Error creating course:", err);
     res.status(500).json({
       success: false,
-      error: err.message,
-    });
+      error: err.message });
   }
 });
+
+
 // --- Tuition Calculation Endpoint ---
 // GET /api/calculate/:userId: Calculates tuition cost breakdown for a user on a given date
 // async allows us to use await inside the function to pause execution till a Promise resolves
@@ -228,37 +264,7 @@ app.get("/api/calculate/:userId", async (req, res) => {
         totalCost: (fairShareCostPerSession * todaysCourses.length).toFixed(2),
     };
 
-    // 10. Calculate individual value (per-course costs)
-    const individualValue = {
-        // array of objects, one for each course happening today
-        missedClasses: todaysCourses.map((course, todayIndex) => {
-            // Find the index of this course in allCourses to determine its position
-            // Use that to determine if it's in the first 4 courses or not
-            // to get the correct course cost
-            const courseIndex = allCourses.findIndex((c) => c.id === course.id);
-            // position is 1-based index
-            const position = courseIndex + 1;
-            const courseCost = Number(position <= 4 ? rates.course_1_4_cost : rates.course_5_plus_cost);
-            const sessionsPerCourse = course.days_of_week.length * 12; // estimate
-            const costPerSession = courseCost / sessionsPerCourse;
-            return {
-                course_name: course.course_name,
-                course_code: course.course_code,
-                time: `${course.start_time} - ${course.end_time}`,
-                courseCost: courseCost.toFixed(2),
-                costPerSession: costPerSession.toFixed(2),
-            };
-        }),
-    };
-
-    // total cost for all missed classes for a particular day
-    let individualTotal = 0;
-    for (let i = 0; i < individualValue.missedClasses.length; i++) {
-        individualTotal += parseFloat(individualValue.missedClasses[i].costPerSession);
-    }
-    individualValue.totalCost = individualTotal.toFixed(2);
-
-    // 11. Return calculation results
+    // 10. Return calculation results
     res.json({
       success: true,
       date,
@@ -266,7 +272,6 @@ app.get("/api/calculate/:userId", async (req, res) => {
       totalTuition: totalTuition.toFixed(2),
       totalSessions,
       fairShare,
-      individualValue,
     });
   } catch (err) {
     console.error("Error calculating cost:", err);
