@@ -82,11 +82,11 @@ app.post("/api/users", async (req, res) => {
   /*
     Example request body:
     {
-     "name": "Ryan",
-     "email": "rtandean@uwaterloo.ca",
-     "program": "Data Science",
+     "name": "John",
+     "email": "jdoe@uwaterloo.ca",
+     "program": "Computer Science",
      "student_type": "domestic",
-     "term_number": "2A"
+     "term_number": "1A"
     }
     */
 
@@ -153,10 +153,10 @@ app.post("/api/enrollments", async (req, res) => {
     }
 
     const enrollment = await pool.query(
-      `INSERT INTO enrollments (user_id, course_id, tuition_paid)
-       VALUES ($1, $2, $3)
+      `INSERT INTO enrollments (user_id, course_id)
+       VALUES ($1, $2)
        RETURNING *`,
-      [user_id, courseId, null]
+      [user_id, courseId]
     );
 
     res.json({
@@ -219,7 +219,11 @@ app.get("/api/calculate/:userId", async (req, res) => {
 
     // 5. Get all courses for this user
     const allCoursesResult = await pool.query(
-        "SELECT * FROM courses WHERE user_id = $1 ORDER BY created_at",
+        `SELECT c.*, e.created_at as enrollment_date
+        FROM enrollments e
+        JOIN courses c ON e.course_id = c.id
+        WHERE e.user_id = $1
+        ORDER BY e.created_at`,
         [userId]
     );
 
