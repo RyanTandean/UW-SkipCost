@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { parseQuestSchedule } from '../utils/questParser';
 
 const PROGRAMS = [
   'Mathematics Co-op',
@@ -35,87 +36,6 @@ export default function Onboarding() {
   // Step 2 data
   const [questText, setQuestText] = useState('');
   const [parsedCourses, setParsedCourses] = useState([]);
-
-  // Parse Quest schedule text
-  const parseQuestSchedule = (text) => {
-    const courses = [];
-    
-    // Match course headers like "CS 245 - Logic & Computation"
-    const courseRegex = /([A-Z]{2,5}\s?\d{3}[A-Z]?)\s*-\s*([^\n]+)/g;
-    const lines = text.split('\n');
-    
-    let currentCourse = null;
-    
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-      
-      // Check for course header
-      const headerMatch = line.match(/^([A-Z]{2,5}\s?\d{3}[A-Z]?)\s*-\s*(.+)$/);
-      if (headerMatch) {
-        currentCourse = {
-          course_code: headerMatch[1].replace(/\s/g, ' '),
-          course_name: headerMatch[2].trim(),
-          days_of_week: [],
-          start_time: null,
-          end_time: null
-        };
-        continue;
-      }
-      
-      // Check for LEC row with time info
-      if (currentCourse && line.includes('LEC')) {
-        // Look for time pattern in nearby lines
-        for (let j = i; j < Math.min(i + 3, lines.length); j++) {
-          const timeLine = lines[j];
-          // Match patterns like "TTh 11:30AM - 12:50PM"
-          const timeMatch = timeLine.match(/([MTWThF]+)\s+(\d{1,2}:\d{2}[AP]M)\s*-\s*(\d{1,2}:\d{2}[AP]M)/);
-          if (timeMatch) {
-            const daysStr = timeMatch[1];
-            const startTime = timeMatch[2];
-            const endTime = timeMatch[3];
-            
-            // Parse days (TTh = Tuesday, Thursday; MWF = Monday, Wednesday, Friday)
-            const days = [];
-            let k = 0;
-            while (k < daysStr.length) {
-              if (daysStr.substring(k, k + 2) === 'Th') {
-                days.push('Thursday');
-                k += 2;
-              } else {
-                const dayMap = { 'M': 'Monday', 'T': 'Tuesday', 'W': 'Wednesday', 'F': 'Friday' };
-                if (dayMap[daysStr[k]]) {
-                  days.push(dayMap[daysStr[k]]);
-                }
-                k++;
-              }
-            }
-            
-            // Convert to 24h time for database
-            const convertTo24h = (timeStr) => {
-              const [time, period] = [timeStr.slice(0, -2), timeStr.slice(-2)];
-              let [hours, minutes] = time.split(':').map(Number);
-              if (period === 'PM' && hours !== 12) hours += 12;
-              if (period === 'AM' && hours === 12) hours = 0;
-              return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`;
-            };
-            
-            currentCourse.days_of_week = days;
-            currentCourse.start_time = convertTo24h(startTime);
-            currentCourse.end_time = convertTo24h(endTime);
-            
-            // Only add if we have complete data
-            if (currentCourse.days_of_week.length > 0 && currentCourse.start_time) {
-              courses.push({ ...currentCourse });
-            }
-            currentCourse = null;
-            break;
-          }
-        }
-      }
-    }
-    
-    return courses;
-  };
 
   const handleParseSchedule = () => {
     setError('');
@@ -153,17 +73,53 @@ export default function Onboarding() {
 
       if (userError) throw userError;
 
-      // Insert courses
-      const coursesWithUserId = parsedCourses.map(course => ({
-        ...course,
-        user_id: user.id
-      }));
+      // For each course, check if it exists in database; if not, create it
+      for (const courseData of parsedCourses) {
+        const { data: existingCourse } = await supabase
+          .from('courses')
+          .select('id')
+          .match({
+            course_code: courseData.course_code,
+            term: courseData.term,
+            section: courseData.section
+          })
+          .single();
 
-      const { error: coursesError } = await supabase
-        .from('courses')
-        .insert(coursesWithUserId);
+        let courseId;
 
-      if (coursesError) throw coursesError;
+        if (existingCourse) {
+          // Course exists, reuse it
+          courseId = existingCourse.id;
+        } else {
+          // Otherwise create new course
+          const { data: newCourse, error: courseError } = await supabase
+            .from('courses')
+            .insert({
+              course_code: courseData.course_code,
+              course_name: courseData.course_name,
+              term: courseData.term,
+              section: courseData.section,
+              days_of_week: courseData.days_of_week,
+              start_time: courseData.start_time,
+              end_time: courseData.end_time
+            })
+            .select()
+            .single();
+
+          if (courseError) throw courseError;
+          courseId = newCourse.id;
+        }
+
+        // Create enrollment
+        const { error: enrollmentError } = await supabase
+          .from('enrollments')
+          .insert({
+            user_id: user.id,
+            course_id: courseId
+          });
+
+        if (enrollmentError) throw enrollmentError;
+      }
 
       // Success - redirect to dashboard
       navigate('/dashboard');

@@ -43,7 +43,7 @@ export default function Dashboard() {
   const [userName, setUserName] = useState("");
   const [greeting, setGreeting] = useState("");
   const [todayLectures, setTodayLectures] = useState([]);
-  const [todayCost, setTodayCost] = useState({ fairshare: 0, individual: 0 });
+  const [todayCost, setTodayCost] = useState({ fairshare: 0});
   const [weekData, setWeekData] = useState([]);
   const [termStats, setTermStats] = useState({
     moneyLost: 0,
@@ -61,11 +61,18 @@ export default function Dashboard() {
       const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
 
       // Fetch user's courses for today
-      const { data: courses } = await supabase
-        .from("courses")
-        .select("*")
-        .eq("user_id", user.id)
-        .contains("days_of_week", [today]);
+      const { data: enrollmentsData } = await supabase
+        .from("enrollments")
+        .select(`
+          *,
+          courses (*)
+        `)
+        .eq("user_id", user.id);
+
+      // Filter for today's courses
+      const courses = enrollmentsData
+        ?.map(e => e.courses)
+        .filter(c => c.days_of_week.includes(today)) || [];
 
       // Fetch user's profile to get program/student_type/term
       const { data: profile } = await supabase
@@ -85,10 +92,14 @@ export default function Dashboard() {
       // Calculate cost per lecture
       if (courses && tuition) {
         // Count total lectures per week across all courses
-        const { data: allCourses } = await supabase
-          .from("courses")
-          .select("days_of_week")
+        const { data: allEnrollments } = await supabase
+          .from("enrollments")
+          .select(`
+            courses (days_of_week)
+          `)
           .eq("user_id", user.id);
+
+        const allCourses = allEnrollments?.map(e => e.courses) || [];
 
         const totalLecturesPerWeek =
           allCourses?.reduce(
@@ -108,8 +119,6 @@ export default function Dashboard() {
           title: `${course.course_code} - ${course.course_name || ""}`.trim(),
           time: formatTime(course.start_time),
           fairshareCost: fairshareCost,
-          // Individual cost could factor in course-specific pricing later
-          individualCost: fairshareCost,
           attended: null,
         }));
 
@@ -157,14 +166,8 @@ export default function Dashboard() {
           (sum, l) => sum + l.fairshareCost,
           0
         );
-        const totalIndividual = formattedLectures.reduce(
-          (sum, l) => sum + l.individualCost,
-          0
-        );
-        setTodayCost({
-          fairshare: totalFairshare,
-          individual: totalIndividual,
-        });
+
+        setTodayCost({fairshare: totalFairshare});
 
         // Calculate term overview stats
         // For now, we'll calculate total classes in the term (12 weeks)
@@ -232,7 +235,7 @@ export default function Dashboard() {
     const checkCourses = async () => {
       if (user) {
         const { data } = await supabase
-          .from("courses")
+          .from("enrollments")
           .select("id")
           .eq("user_id", user.id)
           .limit(1);
@@ -311,19 +314,6 @@ export default function Dashboard() {
               </p>
               <p className="text-2xl sm:text-3xl font-bold text-red-400">
                 ${todayCost.fairshare.toFixed(2)}
-              </p>
-            </motion.div>
-
-            {/* Individual Cost Bubble */}
-            <motion.div
-              variants={staggerItem}
-              className="bg-white/70 rounded-2xl sm:rounded-3xl shadow-lg p-4 sm:p-6 w-full sm:w-48 h-28 sm:h-32 flex flex-col items-center justify-center"
-            >
-              <p className="text-xs sm:text-sm font-semibold text-gray-600 mb-1 sm:mb-2">
-                Individual Cost
-              </p>
-              <p className="text-2xl sm:text-3xl font-bold text-red-400">
-                ${todayCost.individual.toFixed(2)}
               </p>
             </motion.div>
           </motion.div>
